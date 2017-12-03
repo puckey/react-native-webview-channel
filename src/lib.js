@@ -1,4 +1,4 @@
-import EventEmitter from 'events';
+import mitt from 'mitt';
 import { RN_MESSAGES_CHANNEL_PREFIX } from '../config';
 
 // create string from passed object
@@ -9,7 +9,9 @@ function createStringified(type, payload){
   })
 }
 
-class RNMessagesChannel extends EventEmitter {
+const events = mitt();
+
+class RNMessagesChannel {
   sendJSON(json) {
     window.postMessage(RN_MESSAGES_CHANNEL_PREFIX + createStringified('json', json));
   }
@@ -19,7 +21,7 @@ class RNMessagesChannel extends EventEmitter {
   }
 
   emit(eventName, eventData, fromRN) {
-    super.emit(eventName, eventData);
+    events.emit(eventName, eventData);
 
     if (fromRN) {
       return;

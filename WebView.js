@@ -1,4 +1,4 @@
-import EventEmitter from 'events';
+import mitt from 'mitt';
 import React, { Component } from 'react';
 import { WebView as NativeWebView } from 'react-native';
 import { RN_MESSAGES_CHANNEL_PREFIX } from './config';
@@ -6,7 +6,7 @@ import { RN_MESSAGES_CHANNEL_PREFIX } from './config';
 export class WebView extends Component {
   constructor(props) {
     super(props);
-    this.messagesChannel = new EventEmitter();
+    this.messagesChannel = mitt();
   }
 
   render() {
@@ -29,8 +29,8 @@ export class WebView extends Component {
     if (data.indexOf(RN_MESSAGES_CHANNEL_PREFIX) !== 0) {
       return; // that's not something that was received from rn messages channel
     }
-    
-    // remove the unique identifier so that only the user's original message 
+
+    // remove the unique identifier so that only the user's original message
     // remains
     const jsonString = data.replace(RN_MESSAGES_CHANNEL_PREFIX, '');
 
