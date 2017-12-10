@@ -130,4 +130,5 @@ export default (webview) => {
   } else {
     document.addEventListener('message', receivedMessage);
   }
+  return channel;
 };
