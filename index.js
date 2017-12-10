@@ -8,19 +8,29 @@ const types = {
   EVENT: 'event',
 }
 
-const createChannel = () => Object.assign(
-  mitt(),
-  {
-    remote: {},
-    _local: {},
-    _responseUID: 0,
+class Channel {
+  constructor(target) {
+    Object.assign(this, mitt());
+    this.remote = {};
+    this._local = {};
+    this._responseUID = 0;
+    this.target = target;
+  }
 
-    send: (
-      name,
+  send (
+    name,
+    payload,
+    _responseName,
+    _type = types.EVENT
+  ){
+    console.log(JSON.stringify({
+      RN_MESSAGES_CHANNEL,
       payload,
-      _responseName,
-      _type = types.EVENT
-    ) => window.postMessage(
+      name,
+      responseName: _responseName,
+      type: _type
+    }));
+    return this.target.postMessage(
       {
         RN_MESSAGES_CHANNEL,
         payload,
@@ -28,80 +38,80 @@ const createChannel = () => Object.assign(
         responseName: _responseName,
         type: _type
       },
-    ),
+    );
+  }
 
-    register: (functionsByName) => {
-      const names = Object.keys(functionsByName);
-      return this.query(null, names, types.REGISTER)
-        .then(() => {
-          Object.assign(this._local, functionsByName);
-        });
-    },
-
-    deregister: (functionsByName) => {
-      Object
-        .keys(functionsByName)
-        .forEach(name => this._local[name] = null);
-      return this.query(null, names, types.DEREGISTER);
-    },
-
-    query: (name, payload, _type) => {
-      let deferred;
-      const responseName = `query-${this._responseUID++}`;
-      const handler = (data) => {
-        this.off(responseName, handler);
-        if (data.error) {
-          deferred.reject(data.error);
-        } else {
-          deferred.resolve(data);
-        }
-      }
-      this.on(responseName, handler);
-      this.send(name, payload, responseName, _type);
-      return new Promise(function(resolve, reject) {
-        deferred = { resolve, reject };
-      })
-    },
-
-    _callFromRemote: async ({ name, payload, responseName }) => {
-      const localFunc = this._local[name];
-      if (!localFunc) {
-        channel.send(responseName, { error: 'missing remote function' });
-        return;
-      }
-      try {
-        const result = await localFunc(payload);
-        channel.send(responseName, result);
-      } catch(error) {
-        channel.send(responseName, { error });
-      }
-    },
-
-    _deregisterFromRemote: ({ functions, responseName }) => {
-      const { remote } = this;
-      functions.forEach(name => { remote[name] = null; });
-      this.send(data.responseName);
-    },
-
-    _registerFromRemote: ({ functions, responseName }) => {
-      const { remote } = this;
-      functions.forEach(name => {
-        remote[name] = (...payload) => {
-          return this.query(null, {
-            payload,
-            name,
-          },
-          types.CALL
-        );
-        }
+  register (functionsByName) {
+    const names = Object.keys(functionsByName);
+    return this.query(null, names, types.REGISTER)
+      .then(() => {
+        Object.assign(this._local, functionsByName);
       });
-      this.send(data.responseName);
+  }
+
+  deregister (functionsByName) {
+    Object
+      .keys(functionsByName)
+      .forEach(name => this._local[name] = null);
+    return this.query(null, names, types.DEREGISTER);
+  }
+
+  query (name, payload, _type) {
+    let deferred;
+    const responseName = `query-${this._responseUID++}`;
+    const handler = (data) => {
+      this.off(responseName, handler);
+      if (data.error) {
+        deferred.reject(data.error);
+      } else {
+        deferred.resolve(data);
+      }
+    }
+    this.on(responseName, handler);
+    this.send(name, payload, responseName, _type);
+    return new Promise(function(resolve, reject) {
+      deferred = { resolve, reject };
+    })
+  }
+
+  async _callFromRemote ({ name, payload, responseName }) {
+    const localFunc = this._local[name];
+    if (!localFunc) {
+      channel.send(responseName, { error: 'missing remote function' });
+      return;
+    }
+    try {
+      const result = await localFunc(payload);
+      channel.send(responseName, result);
+    } catch(error) {
+      channel.send(responseName, { error });
     }
   }
-);
+
+  _deregisterFromRemote ({ functions, responseName }) {
+    const { remote } = this;
+    functions.forEach(name => { remote[name] = null; });
+    this.send(data.responseName);
+  }
+
+  _registerFromRemote ({ functions, responseName }) {
+    const { remote } = this;
+    functions.forEach(name => {
+      remote[name] = (...payload) => {
+        return this.query(null, {
+          payload,
+          name,
+        },
+        types.CALL
+      );
+      }
+    });
+    this.send(data.responseName);
+  }
+}
 
 export default (webview) => {
-  const channel = createChannel();
+  const channel = new Channel(webview || window.document);
   const receivedMessage = async (data) => {
     if (data.RN_MESSAGES_CHANNEL !== RN_MESSAGES_CHANNEL) return;
     switch(data.type) {
@@ -122,7 +132,6 @@ export default (webview) => {
         break;
     }
   };
-
   if (webview) {
     webview.onMessage = ({ nativeEvent }) => {
       receivedMessage(nativeEvent);
