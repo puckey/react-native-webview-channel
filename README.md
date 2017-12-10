@@ -41,14 +41,14 @@ yarn add react-native-webview-messaging
 ```javascript
 import React, { Component } from 'react';
 import { View, TouchableHighlight } from 'react-native';
-import { WebView } from 'react-native-webview-messaging/WebView';
+import createChannel from 'react-native-webview-messaging/channel';
 
 export class ExampleView extends Component {
   render() {
     return (
       <View>
         <WebView
-          ref={ webview => { this.webview = webview; }}
+          ref={ webview => { this.channel = createChannel(webview); }}
           source={ require('./some-page.html') }
         />
         <TouchableHighlight onPress={this.sendMessageToWebView} underlayColor='transparent'>
@@ -59,19 +59,16 @@ export class ExampleView extends Component {
   }
 
   componentDidMount() {
-    this.webview.messagesChannel.on('text', text => console.log(text));
-    this.webview.messagesChannel.on('json', json => console.log(json));
-    this.webview.messagesChannel.on('custom-event-from-webview', eventData => console.log(eventData));
+    this.channel.on('message', text => console.log(text));
+    this.channel.on('custom-event-from-webview', eventData => console.log(eventData));
   }
 
   sendMessageToWebView = () => {
-    this.webview.sendJSON({
-      payload: 'JSON from RN'
+    this.channel.send('message', 'greetings from web page');
+    this.channel.send('custom-event-from-rn', {
+      custom: true,
+      data: [1, 2, 3],
     });
-
-    this.webview.send('plain text from RN');
-
-    this.webview.emit('custom-event-from-rn', { payload: 'Custom event from RN' });
   }
 }
 ```
@@ -79,76 +76,60 @@ export class ExampleView extends Component {
 ### WebView
 
 ```javascript
-import RNMsgChannel from 'react-native-webview-messaging';
+import channel from 'react-native-webview-messaging';
 
-RNMsgChannel.on('text', text => console.log(text));
-RNMsgChannel.on('json', json => console.log(json));
-RNMsgChannel.on('custom-event-from-rn', data => console.log(data));
+channel.on('message', text => console.log(text));
+channel.on('custom-event-from-rn', ({ custom, data }) => console.log(custom, data));
 
-RNMsgChannel.send('plain text from WebView');
-RNMsgChannel.sendJSON({
-  payload: 'JSON from WebView'
+channel.send('message', 'all the best from WebView');
+channel.send('custom-event-from-webview', {
+  custom: true,
+  data: [1, 2, 3],
 });
-
-RNMsgChannel.emit('custom-event-from-webview', { payload: 'Custom event from WebView' })
 ```
 
-## API Docs
-## WebView
-
-extends WebView from `react-native`
+## React Native API Docs
 
 ### Import
 ```javascript
 // es6 modules
-import { WebView } from 'react-native-webview-messaging/WebView';
+import createChannel from 'react-native-webview-messaging/channel';
+
 // commonJS
-const { WebView } = require('react-native-webview-messaging/WebView');
+const createChannel = require('react-native-webview-messaging/channel');
 ```
+### createChannel(webview: WebView)
+Creates a channel to the webview
 
-### WebView#send(text: String)
-Emits `'text'` event on `RNMessagesChannel` inside WebView
+### Channel#send(eventName: String, eventData: Any)
+Send an event to WebView
 
-### WebView#sendJSON(json: Object)
-Emits `'json'` event on `RNMessagesChannel` inside WebView
+### Channel#on(eventName: String, callback: Function)
+Register an event handler for the given type.
 
-### WebView#emit(eventName: String, [eventData: Object])
-Emits custom event on `RNMessagesChannel` inside WebView
-
-### messagesChannel: EventEmitter
-Emits events sent from WebView
-
-* `'text'` - emitted when `RNMessagesChannel#send(text: String)` is called in WebView
-* `'json'` - emitted when `RNMessagesChannel#sendJSON(json: Object)` is called in WebView
-* you can also emit custom events with `RNMessagesChannel#emit(eventName: String, [eventData: Object])` method
+### Channel#off(eventName: String, callback: Function)
+Remove an event handler for the given type.
 
 ---
 
-## RNMessagesChannel
-extends `EventEmitter`
-
-Emits events sent from RN app
-
-* `'text'` - emitted when `WebView#send(text: String)` is called in RN app
-* `'json'` - emitted when `WebView#sendJSON(json: Object)` is called in RN app
-* you can also emit custom events with `WebView#emit(eventName: String, [eventData: Object])` method
-
-### RNMessagesChannel#send(text: String)
-Emits `'text'` event to `WebView#messagesChannel` in RN app
-
-### RNMessagesChannel#sendJSON(json: Object)
-Emits `'json'` event to `WebView#messagesChannel` in RN app
-
-### RNMessagesChannel#emit(eventName: String, [eventData: Object])
-Emits custom event to `WebView#messagesChannel` in RN app
+## Browser API Docs
 
 ### Import
 ```javascript
 // es6 modules
-import RNMessagesChannel from 'react-native-webview-messaging';
+import channel from 'react-native-webview-messaging';
 // commonJS
-const RNMessagesChannel = require('react-native-webview-messaging');
+const channel = require('react-native-webview-messaging');
 ```
+
+### channel#send(eventName: String, eventData: Any)
+Send an event to the React Native app
+
+### channel#on(eventName: String, callback: Function)
+Register an event handler for the given type.
+
+### channel#off(eventName: String, callback: Function)
+Remove an event handler for the given type.
 
 ## LICENSE
 
