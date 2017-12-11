@@ -1,142 +1,125 @@
 import mitt from 'mitt';
 
-const RN_MESSAGES_CHANNEL = 'RN_MESSAGES_CHANNEL';
+const debug = false;
+const RN_CHANNEL = 1;
 const types = {
-  REGISTER: 'register',
-  DEREGISTER: 'deregister',
-  CALL: 'call',
-  EVENT: 'event',
-}
+  CALL: 0,
+  EVENT: 1,
+};
+
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 class Channel {
   constructor(target) {
     Object.assign(this, mitt());
-    this.remote = {};
     this._local = {};
     this._responseUID = 0;
     this.target = target;
+    this.onMessage = this.onMessage.bind(this);
   }
 
-  send (
+  onMessage(data) {
+    if (data.nativeEvent) {
+      data = data.nativeEvent.data;
+    }
+    if (!/RN_CHANNEL/.test(data)) return;
+    data = JSON.parse(data);
+    if (debug) {
+      console.log('channel.onMessage', data);
+    }
+    switch (data.type) {
+      case types.CALL:
+        this._callFromRemote(data.payload, data.responseName);
+        break;
+
+      case types.EVENT:
+        this.emit(data.name, data.payload);
+        break;
+    }
+  }
+
+  send(
     name,
     payload,
     _responseName,
     _type = types.EVENT
-  ){
-    console.log(JSON.stringify({
-      RN_MESSAGES_CHANNEL,
+  ) {
+    const data = JSON.stringify({
+      RN_CHANNEL,
       payload,
       name,
       responseName: _responseName,
       type: _type
-    }));
-    return this.target.postMessage(
+    });
+    if (debug) {
+      console.log('channel.send', data);
+    }
+    return this.target.postMessage(data);
+  }
+
+  register(functionsByName) {
+    Object.assign(this._local, functionsByName);
+  }
+
+  deregister(functionsByName) {
+    Object
+      .keys(functionsByName)
+      .forEach((name) => { this._local[name] = null; });
+  }
+
+  call(name, payload) {
+    return this.query(
+      null,
       {
-        RN_MESSAGES_CHANNEL,
         payload,
         name,
-        responseName: _responseName,
-        type: _type
       },
+      types.CALL
     );
   }
 
-  register (functionsByName) {
-    const names = Object.keys(functionsByName);
-    return this.query(null, names, types.REGISTER)
-      .then(() => {
-        Object.assign(this._local, functionsByName);
-      });
-  }
-
-  deregister (functionsByName) {
-    Object
-      .keys(functionsByName)
-      .forEach(name => this._local[name] = null);
-    return this.query(null, names, types.DEREGISTER);
-  }
-
-  query (name, payload, _type) {
+  query(name, payload, _type) {
     let deferred;
     const responseName = `query-${this._responseUID++}`;
     const handler = (data) => {
       this.off(responseName, handler);
-      if (data.error) {
+      if (data && data.error) {
         deferred.reject(data.error);
       } else {
         deferred.resolve(data);
       }
-    }
+    };
     this.on(responseName, handler);
     this.send(name, payload, responseName, _type);
-    return new Promise(function(resolve, reject) {
+    return new Promise((resolve, reject) => {
       deferred = { resolve, reject };
-    })
+    });
   }
 
-  async _callFromRemote ({ name, payload, responseName }) {
-    const localFunc = this._local[name];
-    if (!localFunc) {
-      channel.send(responseName, { error: 'missing remote function' });
-      return;
+  async _callFromRemote({ name, payload }, responseName) {
+    if (debug) {
+      console.log('channel._callFromRemote', { name, payload });
+    }
+
+    // TODO: timeout?
+    while (!this._local[name]) {
+      await sleep(100);
     }
     try {
-      const result = await localFunc(payload);
-      channel.send(responseName, result);
-    } catch(error) {
-      channel.send(responseName, { error });
-    }
-  }
-
-  _deregisterFromRemote ({ functions, responseName }) {
-    const { remote } = this;
-    functions.forEach(name => { remote[name] = null; });
-    this.send(data.responseName);
-  }
-
-  _registerFromRemote ({ functions, responseName }) {
-    const { remote } = this;
-    functions.forEach(name => {
-      remote[name] = (...payload) => {
-        return this.query(null, {
-          payload,
-          name,
-        },
-        types.CALL
-      );
+      const result = await this._local[name](payload);
+      if (debug) {
+        console.log('channel._callFromRemote result', result);
       }
-    });
-    this.send(data.responseName);
+      this.send(responseName, result);
+    } catch (error) {
+      this.send(responseName, { error });
+    }
   }
 }
 
 export default (webview) => {
   const channel = new Channel(webview || window.document);
-  const receivedMessage = async (data) => {
-    if (data.RN_MESSAGES_CHANNEL !== RN_MESSAGES_CHANNEL) return;
-    switch(data.type) {
-      case types.CALL:
-        channel._callFromRemote(data);
-        break;
-
-      case types.REGISTER:
-        channel._registerFromRemote(data);
-        break;
-
-      case types.DEREGISTER:
-        channel._deregisterFromRemote(data);
-        break;
-
-      case types.EVENT:
-        channel.emit(data.eventName, data.payload);
-        break;
-    }
-  };
-  if (webview) {
-    webview.onMessage = ({ nativeEvent }) => {
-      receivedMessage(nativeEvent);
-    };
-  } else {
+  if (!webview) {
     document.addEventListener('message', receivedMessage);
   }
   return channel;
