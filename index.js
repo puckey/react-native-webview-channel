@@ -18,12 +18,12 @@ class Channel {
     this.onMessage = this.onMessage.bind(this);
   }
 
-  onMessage(data) {
-    if (data.nativeEvent) {
-      data = data.nativeEvent.data;
-    }
-    if (!/RN_CHANNEL/.test(data)) return;
-    data = JSON.parse(data);
+  onMessage(event) {
+    const messageData = event.nativeEvent
+      ? event.nativeEvent.data
+      : event.data;
+    if (!/RN_CHANNEL/.test(messageData)) return;
+    const data = JSON.parse(messageData);
     if (debug) {
       console.log('channel.onMessage', data);
     }
@@ -103,6 +103,9 @@ class Channel {
 
     // TODO: timeout?
     while (!this._local[name]) {
+      if (debug) {
+        console.log(`channel._callFromRemote waiting for ${name}`)
+      }
       await sleep(100);
     }
     try {
@@ -118,9 +121,9 @@ class Channel {
 }
 
 export default (webview) => {
-  const channel = new Channel(webview || window.document);
+  const channel = new Channel(webview || window);
   if (!webview) {
-    document.addEventListener('message', receivedMessage);
+    document.addEventListener('message', channel.onMessage);
   }
   return channel;
 };
