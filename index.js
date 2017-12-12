@@ -29,7 +29,7 @@ class Channel {
     }
     switch (data.type) {
       case types.CALL:
-        this._callFromRemote(data.payload, data.responseName);
+        this._callFromRemote(data.args, data.responseName);
         break;
 
       case types.EVENT:
@@ -67,11 +67,11 @@ class Channel {
       .forEach((name) => { this._local[name] = null; });
   }
 
-  call(name, payload) {
+  call(name, ...args) {
     return this.query(
       null,
       {
-        payload,
+        args,
         name,
       },
       types.CALL
@@ -96,9 +96,9 @@ class Channel {
     });
   }
 
-  async _callFromRemote({ name, payload }, responseName) {
+  async _callFromRemote({ name, args }, responseName) {
     if (debug) {
-      console.log('channel._callFromRemote', { name, payload });
+      console.log('channel._callFromRemote', { name, args });
     }
 
     // TODO: timeout?
@@ -109,7 +109,8 @@ class Channel {
       await sleep(100);
     }
     try {
-      const result = await this._local[name](payload);
+      const func = this._local[name];
+      const result = await func.apply(func, args);
       if (debug) {
         console.log('channel._callFromRemote result', result);
       }
