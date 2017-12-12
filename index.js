@@ -14,7 +14,8 @@ class Channel {
     Object.assign(this, mitt());
     this._local = {};
     this._responseUID = 0;
-    this.target = target;
+    this.target = target || window;
+    this.isWebview = !target;
     this.onMessage = this.onMessage.bind(this);
   }
 
@@ -38,12 +39,20 @@ class Channel {
     }
   }
 
-  send(
+  async send(
     name,
     payload,
     _responseName,
     _type = types.EVENT
   ) {
+    if (this.isWebview) {
+      while (!window.originalPostMessage) {
+        if (debug) {
+          console.log(`channel.send waiting for postMessage injection`)
+        }
+        await sleep(100);
+      }
+    }
     const data = JSON.stringify({
       RN_CHANNEL,
       payload,
@@ -54,7 +63,7 @@ class Channel {
     if (debug) {
       console.log('channel.send', data);
     }
-    return this.target.postMessage(data);
+    this.target.postMessage(data);
   }
 
   register(functionsByName) {
@@ -122,7 +131,7 @@ class Channel {
 }
 
 export default (webview) => {
-  const channel = new Channel(webview || window);
+  const channel = new Channel(webview);
   if (!webview) {
     document.addEventListener('message', channel.onMessage);
   }
