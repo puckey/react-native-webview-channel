@@ -1,6 +1,8 @@
-# React Native WebView Messaging
+# React Native WebView Channel
 
-Library for communication between React Native WebView and webpages loaded within. Call functions remotely, query for values and send events.
+Tiny library for 2-way communication between React Native WebView and webpages loaded within. Call functions remotely, query for values and send events.
+
+Based on [React Native Webview Messaging](https://github.com/R1ZZU/react-native-webview-messaging).
 
 * [Installation](#installation)
 
