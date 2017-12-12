@@ -29,7 +29,7 @@ class Channel {
     }
     switch (data.type) {
       case types.CALL:
-        this._callFromRemote(data.args, data.responseName);
+        this._callFromRemote(data.payload, data.responseName);
         break;
 
       case types.EVENT:
