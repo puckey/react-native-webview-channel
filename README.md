@@ -9,13 +9,13 @@ Based on [React Native Webview Messaging](https://github.com/R1ZZU/react-native-
 ## Installation
 
 ```sh
-npm install puckey/react-native-webview-messaging
+npm install puckey/react-native-webview-channel
 ```
 
 or with yarn
 
 ```sh
-yarn add puckey/react-native-webview-messaging
+yarn add puckey/react-native-webview-channel
 ```
 
 ## LICENSE
