@@ -1,6 +1,6 @@
 {
   "name": "react-native-webview-channel",
-  "version": "1.3",
+  "version": "1.3.0",
   "description": "Communicate between React Native app and pages loaded in WebView. Call functions remotely, query for values and send events back and forth.",
   "keywords": [
     "react-native",
