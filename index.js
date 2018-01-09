@@ -135,8 +135,8 @@ class Channel {
 
 export default (webview) => {
   const channel = new Channel(webview);
-  if (!webview) {
-    document.addEventListener('message', channel.onMessage);
+  if (!webview && typeof window !== 'undefined') {
+    window.document.addEventListener('message', channel.onMessage);
   }
   return channel;
 };
