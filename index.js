@@ -73,7 +73,10 @@ class Channel {
   deregister(functionsByName) {
     Object
       .keys(functionsByName)
-      .forEach((name) => { this._local[name] = null; });
+      .filter(name => this._local[name] === functionsByName[name])
+      .forEach((name) => {
+        this._local[name] = null;
+      });
   }
 
   call(name, ...args) {
