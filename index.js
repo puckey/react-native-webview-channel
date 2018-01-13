@@ -63,7 +63,11 @@ class Channel {
     if (debug) {
       console.log('channel.send', data);
     }
-    this.target.postMessage(data);
+
+    // Make sure webview still exists:
+    if (this.isWebview || this.target.getWebViewHandle() !== null) {
+      this.target.postMessage(data);
+    }
   }
 
   register(functionsByName) {
