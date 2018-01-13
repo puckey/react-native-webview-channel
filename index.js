@@ -10,12 +10,12 @@ const types = {
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 class Channel {
-  constructor(webview) {
+  constructor(target) {
     Object.assign(this, mitt());
     this._local = {};
     this._responseUID = 0;
-    this.target = webview || window;
-    this.isWebview = !webview;
+    this.target = target || window;
+    this.isWebview = !target;
     this.onMessage = this.onMessage.bind(this);
   }
 
