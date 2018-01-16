@@ -8,6 +8,15 @@ const types = {
 };
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+const isWebview = typeof window !== 'undefined';
+
+let rnMessenger;
+if (isWebview) {
+  rnMessenger = mitt();
+  window.__receivedMessageFromReactNative = (data) => {
+    rnMessenger.emit('message', { data });
+  }
+}
 
 class Channel {
   constructor(target) {
@@ -15,14 +24,18 @@ class Channel {
     this._local = {};
     this._responseUID = 0;
     this.target = target || window;
-    this.isWebview = !target;
     this.onMessage = this.onMessage.bind(this);
+    if (this.isWebview) {
+      rnMessenger.on('message', this.onMessage);
+    }
+  }
+
+  destroy() {
+    rnMessenger.off('message', this.onMessage);
   }
 
   onMessage(event) {
-    const messageData = event.nativeEvent
-      ? event.nativeEvent.data
-      : event.data;
+    const messageData = event.data;
     if (!/RN_CHANNEL/.test(messageData)) return;
     const data = JSON.parse(messageData);
     if (debug) {
@@ -64,9 +77,11 @@ class Channel {
       console.log('channel.send', data);
     }
 
-    // Make sure webview still exists:
-    if (this.isWebview || this.target.getWebViewHandle() !== null) {
+    if (this.isWebview) {
       this.target.postMessage(data);
+    } else if (this.target.getWebViewHandle() !== null) {
+      const js = `__receivedMessageFromReactNative(${JSON.stringify(data)})`;
+      this.target.evaluateJavaScript(js);
     }
   }
 
@@ -139,8 +154,5 @@ class Channel {
 
 export default (webview) => {
   const channel = new Channel(webview);
-  if (!webview && typeof window !== 'undefined') {
-    window.document.addEventListener('message', channel.onMessage);
-  }
   return channel;
 };
