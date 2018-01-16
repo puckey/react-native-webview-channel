@@ -25,7 +25,7 @@ class Channel {
     this._responseUID = 0;
     this.target = target || window;
     this.onMessage = this.onMessage.bind(this);
-    if (this.isWebview) {
+    if (isWebview) {
       rnMessenger.on('message', this.onMessage);
     }
   }
@@ -58,7 +58,7 @@ class Channel {
     _responseName,
     _type = types.EVENT
   ) {
-    if (this.isWebview) {
+    if (isWebview) {
       while (!window.originalPostMessage) {
         if (debug) {
           console.log(`channel.send waiting for postMessage injection`)
@@ -77,7 +77,7 @@ class Channel {
       console.log('channel.send', data);
     }
 
-    if (this.isWebview) {
+    if (isWebview) {
       this.target.postMessage(data);
     } else if (this.target.getWebViewHandle() !== null) {
       const js = `__receivedMessageFromReactNative(${JSON.stringify(data)})`;
