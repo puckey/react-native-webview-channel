@@ -1,4 +1,5 @@
 import mitt from 'mitt';
+import serializeError from 'serialize-error';
 
 const debug = false;
 const RN_CHANNEL = 1;
@@ -99,11 +100,7 @@ class Channel {
     const responseName = `query-${this._responseUID++}`;
     const handler = (data) => {
       this.off(responseName, handler);
-      if (data && data.error) {
-        deferred.reject(data.error);
-      } else {
-        deferred.resolve(data);
-      }
+      deferred.resolve(data);
     };
     this.on(responseName, handler);
     this.send(name, payload, responseName, _type);
@@ -132,7 +129,11 @@ class Channel {
       }
       this.send(responseName, result);
     } catch (error) {
-      this.send(responseName, { error });
+      console.log(error);
+      this.send(
+        responseName,
+        { error: serializeError(error) }
+      );
     }
   }
 }
